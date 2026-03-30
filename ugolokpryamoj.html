@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <script src="https://aframe.io/releases/1.3.0/aframe.min.js"></script>
+    <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js"></script>
+</head>
+<body style="margin: 0; overflow: hidden;">
+
+<script>
+    let markerVisible = { A: false, B: false, C: false, D: false };
+
+    AFRAME.registerComponent('registerevents', {
+        init: function () {
+            let marker = this.el;
+            marker.addEventListener('markerFound', function () {
+                markerVisible[marker.id] = true;
+            });
+            marker.addEventListener('markerLost', function () {
+                markerVisible[marker.id] = false;
+            });
+        }
+    });
+
+    AFRAME.registerComponent('run', {
+        tick: function () {
+            let m = {
+                A: document.querySelector("#A"),
+                B: document.querySelector("#B"),
+                C: document.querySelector("#C"),
+                D: document.querySelector("#D")
+            };
+
+            // Функція для малювання ліній (використовує світові координати)
+            function drawLine(idStart, idEnd, color) {
+                let lineId = `#line-${idStart}${idEnd}`;
+                let lineEntity = document.querySelector(lineId);
+                
+                if (markerVisible[idStart] && markerVisible[idEnd]) {
+                    let p1 = new THREE.Vector3();
+                    let p2 = new THREE.Vector3();
+                    m[idStart].object3D.getWorldPosition(p1);
+                    m[idEnd].object3D.getWorldPosition(p2);
+
+                    lineEntity.setAttribute('line', {
+                        start: p1,
+                        end: p2,
+                        color: color,
+                        visible: true
+                    });
+                } else {
+                    lineEntity.setAttribute('line', { visible: false });
+                }
+            }
+
+            // Малюємо сторони чотирикутника (зелені)
+            drawLine("A", "B", "lime");
+            drawLine("B", "D", "lime");
+            drawLine("D", "C", "lime");
+            drawLine("C", "A", "lime");
+
+            // МАЛЮЄМО ХРЕСТ (Діагоналі - червоні)
+            drawLine("A", "D", "red");
+            drawLine("B", "C", "red");
+
+            // РОЗРАХУНКИ (тільки якщо всі 4 маркери в кадрі)
+            if (markerVisible.A && markerVisible.B && markerVisible.C && markerVisible.D) {
+                let pA = new THREE.Vector3(); m.A.object3D.getWorldPosition(pA);
+                let pB = new THREE.Vector3(); m.B.object3D.getWorldPosition(pB);
+                let pC = new THREE.Vector3(); m.C.object3D.getWorldPosition(pC);
+                let pD = new THREE.Vector3(); m.D.object3D.getWorldPosition(pD);
+
+                // Периметр
+                let perimeter = pA.distanceTo(pB) + pB.distanceTo(pD) + pD.distanceTo(pC) + pC.distanceTo(pA);
+
+                // Функція площі трикутника
+                const getArea = (v1, v2, v3) => {
+                    const s1 = new THREE.Vector3().subVectors(v2, v1);
+                    const s2 = new THREE.Vector3().subVectors(v3, v1);
+                    return 0.5 * new THREE.Vector3().crossVectors(s1, s2).length();
+                };
+
+                console.clear();
+                console.log("=== РЕЗУЛЬТАТИ ВИМІРЮВАНЬ ===");
+                console.log("Периметр чотирикутника:", perimeter.toFixed(3));
+                console.log("Площа трикутника ABD:", getArea(pA, pB, pD).toFixed(4));
+                console.log("Площа трикутника ACD:", getArea(pA, pC, pD).toFixed(4));
+                console.log("Площа трикутника ABC:", getArea(pA, pB, pC).toFixed(4));
+                console.log("Площа трикутника BCD:", getArea(pB, pC, pD).toFixed(4));
+            }
+        }
+    });
+</script>
+
+<a-scene embedded 
+         vr-mode-ui="enabled: false"
+         arjs="trackingMethod: best; sourceType: webcam; debugUIEnabled: false;"
+         run>
+
+    <a-marker type="pattern" url="pattern-markerA.patt" id="A" registerevents>
+        <a-sphere color="red" radius="0.08"></a-sphere>
+    </a-marker>
+    <a-marker type="pattern" url="pattern-markerB.patt" id="B" registerevents>
+        <a-sphere color="green" radius="0.08"></a-sphere>
+    </a-marker>
+    <a-marker type="pattern" url="pattern-markerC.patt" id="C" registerevents>
+        <a-sphere color="blue" radius="0.08"></a-sphere>
+    </a-marker>
+    <a-marker type="pattern" url="pattern-markerD.patt" id="D" registerevents>
+        <a-sphere color="yellow" radius="0.08"></a-sphere>
+    </a-marker>
+
+    <a-entity id="line-AB"></a-entity>
+    <a-entity id="line-BD"></a-entity>
+    <a-entity id="line-DC"></a-entity>
+    <a-entity id="line-CA"></a-entity>
+    
+    <a-entity id="line-AD"></a-entity>
+    <a-entity id="line-BC"></a-entity>
+
+    <a-entity camera></a-entity>
+</a-scene>
+
+</body>
+</html>
